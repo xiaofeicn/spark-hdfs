@@ -26,12 +26,12 @@ object GraceCloseHelper {
   }
 
   def daemonHttpServerEnv(env:String, ssc: StreamingContext) = {
-    var port=55555
+    var port=55551
     if("test".equals(env)){
-      port=55554
+      port=55552
     }
     else if("dev".equals(env)){
-      port=55556
+      port=55553
     }
     val server = new Server(port)
     val context = new ContextHandler()
