@@ -34,12 +34,14 @@ object DisposeHDFSStream {
 
 
   def createStreamingContext(checkpointDirectory: String, appName: String, env: String): StreamingContext = {
+    val spark_ui_port=ConfigerHelper.getProperty(s"spark.ui.port.$env").toInt
     val spark: SparkSession = SparkSession.builder()
       .appName(appName)
       //      .master("local[2]")
       //      .config("spark.default.parallelism", "12")
       .config("spark.shuffle.consolidateFiles", true)
       .config("spark.streaming.backpressure.enabled", true)
+      .config("spark.ui.port",spark_ui_port)
       .getOrCreate()
     val sc: SparkContext = spark.sparkContext
     val ssc: StreamingContext = new StreamingContext(sc, Seconds(10))
