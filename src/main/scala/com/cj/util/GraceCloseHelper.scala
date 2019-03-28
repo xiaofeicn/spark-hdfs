@@ -25,6 +25,22 @@ object GraceCloseHelper {
     server.start()
   }
 
+  def daemonHttpServerEnv(env:String, ssc: StreamingContext) = {
+    var port=55555
+    if("test".equals(env)){
+      port=55554
+    }
+    else if("dev".equals(env)){
+      port=55556
+    }
+    val server = new Server(port)
+    val context = new ContextHandler()
+    context.setContextPath("/close")
+    context.setHandler(new CloseStreamHandler(ssc))
+    server.setHandler(context)
+    server.start()
+  }
+
   /**
     * 负责接受http请求来优雅的关闭流
     * @param ssc Stream上下文
