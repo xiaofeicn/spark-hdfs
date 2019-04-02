@@ -81,7 +81,7 @@
         StreamingContext
         ```    
 ## packages org
--  参数：
+-  *
      ```
      Streaming-RabbitMq  源码
      ```       
