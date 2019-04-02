@@ -1,7 +1,7 @@
 ## 使用
 - * 
      ```
-     submit 命令--class 指定为 com.cj.spark.streaming.streaming.StartStreaming 并传入参数 test/dev/uat 任一
+     submit 命令--class 指定为 com.cj.spark.streaming.streaming.StartStreaming 并传入参数 test|dev|uat 任一
      其他配置详见 package com.cj.uti.config.properties
      ```
 
@@ -21,19 +21,19 @@
         ```
    -  参数：
         ```
-        env：test/dev/uat
+        env：test|dev|uat
         ```
 
 + 2 'DisposeHDFSStream'
    -  作用
         ```
-        流处理主体,监控hdfs路径，监控路径有env参数决定
+        流处理主体,监控hdfs路径，监控路径由env参数决定
         ```
    -  参数：
         ```
         checkpointDirectory：
         appName：流处理程序名
-        env：test/dev/uat
+        env：test|dev|uat
         ```
 
 + 3 'DisposeRabbit'
@@ -70,7 +70,7 @@
         ```
    -  参数：
         ```
-        env：test/dev/uat
+        env：test|dev|uat
         ```
 + 3 'GraceCloseHelper'
    -  作用
@@ -81,7 +81,7 @@
         ```
         StreamingContext
         ```    
-## packages org
+##  packages org
 +  *
      ```
      Streaming-RabbitMq  源码
