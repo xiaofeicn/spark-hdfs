@@ -1,7 +1,7 @@
 ## 使用
 - * 
      ```
-     submit 命令--class 指定为 com.cj.spark.streaming.streaming.StartStreaming 并传入参数 test/dev/uat 任一
+     submit 命令--class 指定为 com.cj.spark.streaming.streaming.StartStreaming 并传入参数 test|dev|uat 任一
      其他配置详见 package com.cj.uti.config.properties
      ```
 
@@ -50,6 +50,7 @@
    -  作用
         ```
         类表，创建DataFrame
+        ```
 
 ### package com.cj.util
 + 1 'config.properties'
