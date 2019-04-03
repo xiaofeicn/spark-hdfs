@@ -1,20 +1,23 @@
-##使用
-- * 
-     ```
-     submit 命令--class 指定为 com.cj.spark.streaming.streaming.StartStreaming 并传入参数 test|dev|uat 任一
+使用
+=======
+* 
+     submit 命令--class 指定为 com.cj.spark.streaming.streaming.StartStreaming 并传入参数 `test|dev|uat` 任一
      其他配置详见 package com.cj.uti.config.properties
-     ```
+     
 
-*****
-##packages com
 
-###package com.cj.spark.streaming.streaming
+packages com
+=======
+
+package com.cj.spark.streaming.streaming
+---
  
 + 1 'StartStreaming'
-   -  作用
+   -  作用：
         ```
         流处理执行入口
         ```
+        
    -  参数：
         ```
         env：test|dev|uat
@@ -42,14 +45,16 @@
         appName：流处理程序名
         ```
 
-###package com.cj.spark.streaming.models
+package com.cj.spark.streaming.models
+---
 + 1 'DisposeRabbit'
    -  作用
         ```
         类表，创建DataFrame
         ```
 
-###package com.cj.util
+package com.cj.util
+---
 + 1 'config.properties'
    -  作用
         ```
@@ -79,8 +84,8 @@
         StreamingContext
         ```    
 
-##packages org
-+  *
-     ```
-     Streaming-RabbitMq  源码
-     ```       
+packages org
+---
+* 
+    Streaming-RabbitMq  源码
+      
