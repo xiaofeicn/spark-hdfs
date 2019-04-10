@@ -49,6 +49,7 @@ object DisposeHDFSStream {
     val url = ConfigerHelper.getProperty(s"jdbc.url.$env")
     val hdfs_data_path = ConfigerHelper.getProperty(s"hdfs.data.path.$env")
     val prop = getPropByEnv(env)
+    val save_path=SaveHadoopFile.save_path(appName,env)
 
     /**
       * 监控hdfs路径
@@ -56,7 +57,7 @@ object DisposeHDFSStream {
     val ds = ssc.textFileStream(hdfs_data_path)
 
 
-    dispose(ds, sc, spark, appName, url, prop)
+    dispose(ds, sc, spark, appName, url, prop,save_path)
     ssc
   }
 
@@ -65,7 +66,8 @@ object DisposeHDFSStream {
               @transient spark: SparkSession,
               appName: String,
               url: String,
-              prop: Properties): Unit = {
+              prop: Properties,
+                save_path:String): Unit = {
     DStream.foreachRDD(foreachFunc = rdd => {
       if (!rdd.isEmpty()) {
 
@@ -715,6 +717,7 @@ object DisposeHDFSStream {
           unPersistUnUse(Set(), sct)
         } catch {
           case e: Exception => {
+            rdd.saveAsTextFile(save_path)
             log.warn(e.getMessage)
           }
         }
