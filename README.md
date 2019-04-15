@@ -1,13 +1,15 @@
 使用
 =======
-
- + 1、
+ + 1、绝对路径
+    /data/apps/sparkhdfs-${env}
+ 
+ + 2、
     submit 命令--class 指定为 com.cj.spark.streaming.streaming.StartStreaming 
      并传入参数 `test|dev|uat|prod` 任一
      其他配置详见 `package com.cj.uti.config.properties`
- + 2、
-    程序监控hdfs路径`{hdfs.data.path.$env}`,当有新的文件put上去之后，程序读取并处理
  + 3、
+    程序监控hdfs路径`{hdfs.data.path.$env}`,当有新的文件put上去之后，程序读取并处理
+ + 4、
     所需文件 
     - 'log4j.properties'
     
