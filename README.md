@@ -1,10 +1,34 @@
 使用
 =======
-* 
-     submit 命令--class 指定为 com.cj.spark.streaming.streaming.StartStreaming 并传入参数 `test|dev|uat` 任一
-     其他配置详见 package com.cj.uti.config.properties
-     
 
+ + 1、
+    submit 命令--class 指定为 com.cj.spark.streaming.streaming.StartStreaming 
+     并传入参数 `test|dev|uat|prod` 任一
+     其他配置详见 `package com.cj.uti.config.properties`
+ + 2、
+    程序监控hdfs路径`{hdfs.data.path.$env}`,当有新的文件put上去之后，程序读取并处理
+ + 3、
+    所需文件 
+    - 'log4j.properties'
+    
+        ```
+        日志配置
+        ```
+    - 'submit.sh'
+    
+        ```
+        spark-submit \
+        --class com.cj.spark.streaming.streaming.StartStreaming  \
+        --master local[2]  \
+        --conf spark.default.parallelism=6 \
+        --executor-memory 3G  \
+        spark-hdfs-jar-with-dependencies.jar `env`
+        ```
+    - 'spark-hdfs-jar-with-dependencies.jar'
+    
+        ```
+        程序包 参数 env 与为运行环境
+        ```
 
 packages com
 =======
@@ -12,7 +36,7 @@ packages com
 package com.cj.spark.streaming.streaming
 ---
  
-+ 1 'StartStreaming'
++ 1、 'StartStreaming'
    -  作用：
    
         ```
@@ -25,7 +49,7 @@ package com.cj.spark.streaming.streaming
         env：test|dev|uat
         ```
 
-+ 2 'DisposeHDFSStream'
++ 2、 'DisposeHDFSStream'
    -  作用
 
         ```
@@ -39,7 +63,7 @@ package com.cj.spark.streaming.streaming
         env：test|dev|uat
         ```
 
-+ 3 'DisposeRabbit'
++ 3、 'DisposeRabbit'
    -  作用
 
         ```
@@ -55,7 +79,7 @@ package com.cj.spark.streaming.streaming
 package com.cj.spark.streaming.models
 ---
 
-+ 1 'DisposeRabbit'
++ 1、 'DisposeRabbit'
    -  作用
 
         ```
@@ -64,20 +88,20 @@ package com.cj.spark.streaming.models
 
 package com.cj.util
 ---
-+ 1 'config.properties'
++ 1、 'config.properties'
    -  作用
 
         ```
         配置文件
         ```
         
-+ 2 'ConfigerHelper'
++ 2、 'ConfigerHelper'
    -  作用
 
         ```
         获取配置文件内item
         ```
-+ 3 'DBHelper'
++ 3、 'DBHelper'
    -  作用
 
         ```
@@ -90,7 +114,7 @@ package com.cj.util
         env：test|dev|uat
         ```
         
-+ 4 'GraceCloseHelper'
++ 4、 'GraceCloseHelper'
    -  作用
 
         ```
