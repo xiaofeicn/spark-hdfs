@@ -33,6 +33,7 @@ object SaveHadoopFile {
 
   }
   def save_path(appName:String,env:String): String ={
+    val HDFSNoPass = ConfigerHelper.getProperty(s"hdfs.nopas.$env")
     val toDay = dateForMater.format(new Date())
     s"$HDFSNoPass/$appName/$env/nopass/$toDay"
 
