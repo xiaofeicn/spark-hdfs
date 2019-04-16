@@ -4,17 +4,12 @@ import java.util.{Date, Properties}
 
 import com.alibaba.fastjson.JSON.parseObject
 import com.cj.spark.streaming.models._
-import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.spark.streaming.rabbitmq.RabbitMQUtils
-import org.spark_project.jetty.server.{Request, Server}
-import org.spark_project.jetty.server.handler.{AbstractHandler, ContextHandler}
 import com.cj.util.DBHelper._
-import com.cj.util.{ConfigerHelper, DateHelper, SaveHadoopFile}
-import com.cj.util.RabbitMqHelper.rabbitMqMap
+import com.cj.util.{ConfigerHelper, SaveHadoopFile}
 import com.cj.spark.streaming.streaming.StartStreaming.log
 
 import scala.language.postfixOps

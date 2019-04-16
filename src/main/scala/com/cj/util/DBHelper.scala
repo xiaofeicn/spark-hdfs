@@ -25,7 +25,7 @@ object DBHelper {
       prop.setProperty("driver", driver)
     }
     prop
-    }
+  }
   def getPropByEnv(env:String): Properties ={
     val prop = new Properties()
     val jdbcUser = ConfigerHelper.getProperty(s"jdbc.user.$env")
