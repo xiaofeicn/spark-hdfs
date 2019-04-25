@@ -3,7 +3,7 @@ package com.cj.spark.streaming.streaming
 import com.cj.util.ConfigerHelper
 import com.cj.spark.streaming.streaming.DisposeHDFSStream.createStreamingContext
 import org.apache.log4j.Logger
-import com.cj.util.GraceCloseHelper.daemonHttpServer
+import com.cj.util.GraceCloseHelper.daemonHttpServerEnv
 import org.apache.spark.streaming.StreamingContext
 
 object StartStreaming {
@@ -28,13 +28,15 @@ object StartStreaming {
       */
 
       if (args.length!=1){
-        println("参数错误")
+        log.error("参数错误")
+
         System.exit(1)
       }
     val env=args(0)
+    log.info(s"=========运行环境  $env======")
     val sct = createStreamingContext(thisCheckpointDirectory, s"$appName - $env",env)
     sct.start()
-    daemonHttpServer(55554, sct)
+    daemonHttpServerEnv(env, sct)
     sct.awaitTermination()
 
   }

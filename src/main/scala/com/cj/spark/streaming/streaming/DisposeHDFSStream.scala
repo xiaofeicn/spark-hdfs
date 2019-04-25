@@ -4,42 +4,38 @@ import java.util.{Date, Properties}
 
 import com.alibaba.fastjson.JSON.parseObject
 import com.cj.spark.streaming.models._
-import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.spark.streaming.rabbitmq.RabbitMQUtils
-import org.spark_project.jetty.server.{Request, Server}
-import org.spark_project.jetty.server.handler.{AbstractHandler, ContextHandler}
 import com.cj.util.DBHelper._
-import com.cj.util.{ConfigerHelper, DateHelper, SaveHadoopFile}
-import com.cj.util.RabbitMqHelper.rabbitMqMap
+import com.cj.util.{ConfigerHelper, SaveHadoopFile}
 import com.cj.spark.streaming.streaming.StartStreaming.log
 
 import scala.language.postfixOps
 
 object DisposeHDFSStream {
-  private[this] val jdbcUrl = ConfigerHelper.getProperty("jdbc.url")
-  private[this] val isTest = ConfigerHelper.getProperty("isTest").toBoolean
-  private[this] val prop1 = getProp(isTest)
   private[this] val tech_before_class_investig = Set(202, 203)
   private[this] val tech_exam_reply = Set(601, 602, 603, 604, 605, 606, 607)
   private[this] val objectives_question = Set(301, 302, 303, 304)
   private[this] val tech_question = Set(301, 302, 303, 304, 305)
   private[this] val choice_question = Set(301, 302, 304)
-  private[this] val name = Set("tb_tech_interact", "tb_tech_group_interact", "tb_tech_investigation", "tb_tech_practise", "tb_tech_before_class_investig")
+  private[this] val name = Set("tb_tech_interact", "tb_tech_group_interact", "tb_tech_investigation",
+    "tb_tech_practise", "tb_tech_before_class_investig")
   private[this] val types = Set(102, 103, 111, 402, 411, 201, 202, 203, 205, 301, 302, 303, 304, 305, 311)
-  private[this] val reply_name = Set("tb_tech_interact_reply", "tb_tech_group_interact_reply", "tb_tech_investigation_reply", "tb_tech_before_class_investig_reply", "tb_tech_practise_reply")
+  private[this] val reply_name = Set("tb_tech_interact_reply", "tb_tech_group_interact_reply",
+    "tb_tech_investigation_reply", "tb_tech_before_class_investig_reply", "tb_tech_practise_reply")
 
 
   def createStreamingContext(checkpointDirectory: String, appName: String, env: String): StreamingContext = {
+    val spark_ui_port=ConfigerHelper.getProperty(s"spark.ui.port.$env").toInt
     val spark: SparkSession = SparkSession.builder()
       .appName(appName)
       //      .master("local[2]")
       //      .config("spark.default.parallelism", "12")
       .config("spark.shuffle.consolidateFiles", true)
       .config("spark.streaming.backpressure.enabled", true)
+      .config("spark.ui.port",spark_ui_port)
       .getOrCreate()
     val sc: SparkContext = spark.sparkContext
     val ssc: StreamingContext = new StreamingContext(sc, Seconds(10))
@@ -48,11 +44,15 @@ object DisposeHDFSStream {
     val url = ConfigerHelper.getProperty(s"jdbc.url.$env")
     val hdfs_data_path = ConfigerHelper.getProperty(s"hdfs.data.path.$env")
     val prop = getPropByEnv(env)
+    val save_path=SaveHadoopFile.save_path(appName,env)
 
+    /**
+      * 监控hdfs路径
+      */
     val ds = ssc.textFileStream(hdfs_data_path)
 
 
-    dispose(ds, sc, spark, appName, url, prop)
+    dispose(ds, sc, spark, appName, url, prop,save_path)
     ssc
   }
 
@@ -61,19 +61,27 @@ object DisposeHDFSStream {
               @transient spark: SparkSession,
               appName: String,
               url: String,
-              prop: Properties): Unit = {
+              prop: Properties,
+                save_path:String): Unit = {
     DStream.foreachRDD(foreachFunc = rdd => {
       if (!rdd.isEmpty()) {
 
         try {
+          /**
+            * 只处理有学生登录的有效课堂
+            */
           val data = rdd.filter(_.contains("tb_tech_student_login_record")).map(x => parseObject(x))
+          /**
+            * 嵌套JSON转换单条数据
+            */
           val json_name_dataARR = data.map(x => x.getJSONArray("RecordList").toArray().map(x => parseObject(x.toString)))
             .flatMap(x =>
               x.map(s => (s.getString("fStr_TableName"), s.getJSONArray("RecordList").toArray()))
             ).cache()
 
-          json_name_dataARR.count()
-
+          /**
+            * 课堂学生登录信息
+            */
           val stuLogin = json_name_dataARR.filter(_._1 == "tb_tech_student_login_record").flatMap(x => x._2)
             .map(line => parseObject(line.toString)).map(json => (
             json.getString("fStr_StudentID"),
@@ -83,12 +91,19 @@ object DisposeHDFSStream {
           val stuLoginMap = stuLogin.map(line => (line._3, 1)).reduceByKey(_ + _).collectAsMap()
 
           val student_info = stuLogin.map(line => ((line._3, line._1), line._2))
-
+          /**
+            * 课堂ID
+            */
           val courseID = stuLogin.map(_._3).distinct().collect()
+          /**
+            * 课堂学生登录信息
+            */
           val stuLoginIDMap = stuLogin.map(line => (line._3, (line._1, line._2))).groupByKey().mapValues(iter => {
             iter.toMap
           }).collectAsMap()
-
+          /**
+            * 发布双向互动
+            */
           val interact_issue = json_name_dataARR.filter(x => name.contains(x._1))
             .flatMap(x => x._2)
             .map(line => parseObject(line.toString)).map(json => (
@@ -98,6 +113,9 @@ object DisposeHDFSStream {
             json.getIntValue("fInt_InteractType")
           )).filter(x => types.contains(x._4)).distinct()
 
+          /**
+            * 个人成长记录
+            */
           val personal_development = json_name_dataARR.filter(_._1 == "tb_tech_personal_development")
             .flatMap(x => x._2)
             .map(line => parseObject(line.toString)).map(json => (
@@ -109,6 +127,9 @@ object DisposeHDFSStream {
             json.getString("fDtt_ModifyTime")
           ))
 
+          /**
+            * 现阶段课堂考试中没有添加 讲解还是考试的标签，不计入统计
+            */
           //          val classExamCount = json_name_dataARR.filter(_._1 == "tb_tech_exam")
           //            .flatMap(x => x._2)
           //            .map(line => parseObject(line.toString))
@@ -116,14 +137,10 @@ object DisposeHDFSStream {
           //              json.getString("fStr_CourseID"),
           //              json.getString("fStr_ExamID")))
           //            .distinct().map(line => (line._1, 1)).reduceByKey(_ + _).collectAsMap()
-          //每个课堂双向互动次数
-
+          /**
+            * 每个课堂双向互动次数
+            */
           val interact_count = interact_issue.map(line => (line._1, 1)).reduceByKey(_ + _).collectAsMap()
-
-
-          //每种双向互动应影响人数
-          //        val interactStuTotal = interact_issue.map(line => ((line._1, line._4), stuLoginMap(line._1))).distinct()
-          //        interactStuTotal.foreach(println(_))
 
           /**
             * 互动响应
@@ -392,30 +409,43 @@ object DisposeHDFSStream {
             .groupByKey().mapValues(iter => {
             iter.toList.maxBy(_._2)
           })
-          //        println(s"investigationClassLast : ${investigationClassLast.partitions.size}")
           val beforeClass = investigationClassLast.filter(_._1._4 == 202).cache()
 
-          //预习人数
+          /**
+            * 预习人数
+            */
           val beforeClassInvestigationManCount_yes = beforeClass.filter(_._2._1 == "预习了").map(line => (line._1._1, 1)).reduceByKey(_ + _).collectAsMap()
 
 
-          //预习调查人数
+          /**
+            * 预习调查人数
+            */
           val beforeClassInvestigationManCount = beforeClass.map(line => (line._1._1, 1)).reduceByKey(_ + _).collectAsMap()
 
-          //预习率
+          /**
+            * 预习率
+            */
           val beforeClassRatio = beforeClassInvestigationManCount_yes.map(line => (line._1, (line._2.toDouble / beforeClassInvestigationManCount.getOrElse(line._1, 0) * 100)
             .formatted("%.2f").toDouble))
 
-          //复习数据
+          /**
+            * 复习数据
+            */
           val afterClass = investigationClassLast.filter(_._1._4 == 203).cache()
-          //复习人数
+          /**
+            * 复习人数
+            */
           val afterClassInvestigationManCount_yes = afterClass.filter(_._2._1 == "复习了").map(line => (line._1._1, 1)).reduceByKey(_ + _).collectAsMap()
 
 
-          //复习调查人数
+          /**
+            * 复习调查人数
+            */
           val afterClassInvestigationManCount = afterClass.map(line => (line._1._1, 1)).reduceByKey(_ + _).collectAsMap()
 
-          //复习率
+          /**
+            * 复习率
+            */
           val afterClassRatio = afterClassInvestigationManCount_yes.map(line => (line._1, (line._2.toDouble / afterClassInvestigationManCount.getOrElse(line._1, 0) * 100)
             .formatted("%.2f").toDouble))
 
@@ -427,14 +457,14 @@ object DisposeHDFSStream {
             (data._2.toDouble / interact_count.getOrElse(data._1._1, 0) * 100).formatted("%.2f").toDouble))
 
           /**
-            * 个人客观题回答正确率
+            * 每个学会回答客观题正确题数
             */
-          //每个学会回答客观题正确题数
           val everyObjectivesRight = objectivesRight.map(data =>
             ((data._1._1, data._2._1), 1)
           ).reduceByKey(_ + _)
-          //        println(s"everyObjectivesRight: ${everyObjectivesRight.partitions.size}")
-          //个人客观题回答正确率
+          /**
+            * 个人客观题回答正确率
+            */
           val everyBodyObjectivesRightRatio = everyObjectivesRight.map(line =>
             (line._1, (line._2.toDouble / objectivesQuestionAnswerNum.getOrElse(line._1._1, 0) * 100).formatted("%.2f").toDouble))
 
@@ -446,7 +476,9 @@ object DisposeHDFSStream {
           val everyObjectivesRightCount = objectivesQuestionAnswer
             .join(objectivesRight.map(line => (line._1, 1)).reduceByKey(_ + _))
             .map(line => (line._1, line._2._2))
-          //客观题每道正确率
+          /**
+            * 客观题每道正确率
+            */
           val everyObjectivesRightRatio = everyObjectivesRightCount.mapPartitions(iter => {
             iter.map(line =>
               (line._1, (line._2.toDouble / stuLoginMap.getOrElse(line._1._1, 0) * 100).formatted("%.2f").toDouble))
@@ -460,7 +492,9 @@ object DisposeHDFSStream {
           val everySubjectiveOverCount = subjectiveQuestionAnswer
             .join(subjectiveLastAnswer.map(data => (data._1, 1)).reduceByKey(_ + _))
             .map(data => (data._1, data._2._2))
-          //每道主观题的完成率
+          /**
+            * 每道主观题的完成率
+            */
           val everySubjectiveOverRatio = everySubjectiveOverCount.map(data =>
             (data._1, (data._2.toDouble / stuLoginMap.getOrElse(data._1._1, 0) * 100).formatted("%.2f").toDouble))
           /**
@@ -472,7 +506,9 @@ object DisposeHDFSStream {
             .groupByKey().map(data => (data._1, data._2.size))
           val everyChoiceAnswerNum = choiceAnswerNum.map(data =>
             ((data._1._1, data._1._2, data._1._3, data._1._4, data._1._5, data._1._6), (data._1._7, data._2)))
-          //选择&判断每道题的未答人
+          /**
+            * 选择&判断每道题的未答人
+            */
           val everyQuseionNoAnswer = choice.map(data => ((data._1._1, data._1._2, data._1._3, data._1._4, data._1._5, data._1._6),
             data._2._1))
             .groupByKey()
@@ -487,7 +523,9 @@ object DisposeHDFSStream {
           val correspondingTmp = corresponding.map(data => (data._1, data._2._2))
 
 
-          //每道对应题的错几人数 题,错几，几人
+          /**
+            *每道对应题的错几人数 题,错几，几人
+            */
           val everyCorrespondingMistakeNumRdd = objectivesQuestionAnswer
             .filter(x => x._1._6 == 303).join(correspondingTmp).filter(_._2._2.nonEmpty).map(data => (data._1, {
             val right = data._2._1.replaceAll("\\d+", "").split("")
@@ -668,9 +706,13 @@ object DisposeHDFSStream {
             line._5,
             line._6)).toDF().write.mode("append").jdbc(url, "tb_personal_development", prop)
 
+          /**
+            * 释放缓存RDD
+            */
           unPersistUnUse(Set(), sct)
         } catch {
           case e: Exception => {
+            rdd.saveAsTextFile(save_path)
             log.warn(e.getMessage)
           }
         }
